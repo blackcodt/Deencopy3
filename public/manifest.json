@@ -1,0 +1,10 @@
+{
+  "name": "Islam is the Deen of GOD",
+  "short_name": "Deen of GOD",
+  "description": "A comprehensive digital book about Islam",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f5f0",
+  "theme_color": "#2d6a4f",
+  "icons": []
+}
