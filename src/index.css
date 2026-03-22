@@ -157,6 +157,52 @@
     transform: rotateY(180deg);
   }
 
+  .book-flip-next {
+    animation: flipNext 0.8s cubic-bezier(0.645, 0.045, 0.355, 1);
+  }
+
+  .book-flip-prev {
+    animation: flipPrev 0.8s cubic-bezier(0.645, 0.045, 0.355, 1);
+  }
+
+  @keyframes flipNext {
+    0% {
+      transform: perspective(1400px) rotateY(0deg) scale(1);
+      box-shadow: 0 0 20px hsl(var(--emerald) / 0.15), 0 20px 60px hsl(var(--foreground) / 0.2);
+    }
+    30% {
+      transform: perspective(1400px) rotateY(-8deg) scale(0.97);
+      box-shadow: 15px 10px 40px hsl(var(--foreground) / 0.3), -5px 0 20px hsl(var(--foreground) / 0.1);
+    }
+    50% {
+      transform: perspective(1400px) rotateY(-15deg) scale(0.95);
+      box-shadow: 25px 15px 50px hsl(var(--foreground) / 0.35), -8px 0 25px hsl(var(--foreground) / 0.12);
+    }
+    100% {
+      transform: perspective(1400px) rotateY(0deg) scale(1);
+      box-shadow: 0 0 20px hsl(var(--emerald) / 0.15), 0 20px 60px hsl(var(--foreground) / 0.2);
+    }
+  }
+
+  @keyframes flipPrev {
+    0% {
+      transform: perspective(1400px) rotateY(0deg) scale(1);
+      box-shadow: 0 0 20px hsl(var(--emerald) / 0.15), 0 20px 60px hsl(var(--foreground) / 0.2);
+    }
+    30% {
+      transform: perspective(1400px) rotateY(8deg) scale(0.97);
+      box-shadow: -15px 10px 40px hsl(var(--foreground) / 0.3), 5px 0 20px hsl(var(--foreground) / 0.1);
+    }
+    50% {
+      transform: perspective(1400px) rotateY(15deg) scale(0.95);
+      box-shadow: -25px 15px 50px hsl(var(--foreground) / 0.35), 8px 0 25px hsl(var(--foreground) / 0.12);
+    }
+    100% {
+      transform: perspective(1400px) rotateY(0deg) scale(1);
+      box-shadow: 0 0 20px hsl(var(--emerald) / 0.15), 0 20px 60px hsl(var(--foreground) / 0.2);
+    }
+  }
+
   .text-gold {
     color: hsl(var(--gold));
   }
