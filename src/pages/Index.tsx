@@ -18,14 +18,12 @@ import {
   Menu,
   Sun,
   Moon,
-  Settings,
   BookOpen,
   BarChart3,
   List,
   Type,
   Search,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const navigate = useNavigate();
