@@ -4,6 +4,7 @@ import { getUserData, saveUserData } from "@/lib/store";
 import { ChevronLeft, ChevronRight, Bookmark, BookmarkCheck, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdBanner } from "./AdBanner";
+import { ShareButton } from "./ShareButton";
 
 export function BookReader() {
   const [currentPage, setCurrentPage] = useState(0);
@@ -193,6 +194,11 @@ export function BookReader() {
             >
               <StickyNote className="h-5 w-5" />
             </Button>
+            <ShareButton
+              text={`📖 ${chapter.title}\n\n${chapter.content[0]?.substring(0, 150)}...`}
+              title={`Babi ${chapter.id}: ${chapter.title}`}
+              className="text-muted-foreground"
+            />
           </div>
 
           <Button

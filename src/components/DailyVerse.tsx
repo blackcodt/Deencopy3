@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { dailyVerses } from "@/lib/bookContent";
-import { X, Share2 } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
+import { ShareButton } from "./ShareButton";
 
 export function DailyVerse({ onClose }: { onClose: () => void }) {
   const [verse, setVerse] = useState(dailyVerses[0]);
@@ -13,16 +13,6 @@ export function DailyVerse({ onClose }: { onClose: () => void }) {
     );
     setVerse(dailyVerses[dayOfYear % dailyVerses.length]);
   }, []);
-
-  const handleShare = async () => {
-    const text = `"${verse.translation}"\n— ${verse.reference}`;
-    if (navigator.share) {
-      await navigator.share({ text });
-    } else {
-      await navigator.clipboard.writeText(text);
-      toast({ title: "Copied to clipboard!", description: "Share this beautiful verse." });
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/60 backdrop-blur-sm p-4">
@@ -48,10 +38,12 @@ export function DailyVerse({ onClose }: { onClose: () => void }) {
 
           <p className="text-xs text-muted-foreground mb-4">— {verse.reference}</p>
 
-          <Button onClick={handleShare} variant="outline" size="sm" className="gap-2">
-            <Share2 className="h-4 w-4" />
-            Share
-          </Button>
+          <ShareButton
+            text={`"${verse.translation}"\n— ${verse.reference}`}
+            title="Ayar Yau - Musulunci"
+            variant="outline"
+            size="sm"
+          />
         </div>
       </div>
     </div>
