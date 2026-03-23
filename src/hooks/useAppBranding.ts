@@ -62,7 +62,7 @@ export function useAppBranding() {
     const { error } = await supabase
       .from("app_settings")
       .upsert(
-        { setting_key: "branding", setting_value: merged as unknown as Record<string, unknown> },
+        [{ setting_key: "branding", setting_value: merged as unknown as Record<string, unknown> }],
         { onConflict: "setting_key" }
       );
 
