@@ -18,17 +18,15 @@ import {
   Menu,
   Sun,
   Moon,
-  Settings,
   BookOpen,
   BarChart3,
   List,
   Type,
   Search,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 const Index = () => {
-  const navigate = useNavigate();
+  
   const [showVerse, setShowVerse] = useState(false);
   const [activeTab, setActiveTab] = useState<"read" | "stats" | "toc" | "search">("read");
   const [isDark, setIsDark] = useState(false);
@@ -122,11 +120,6 @@ const Index = () => {
                   <Button variant="outline" size="sm" onClick={() => changeFontSize(2)} className="h-7 w-7 p-0 text-xs">A+</Button>
                 </div>
               </div>
-              <div className="border-t border-border my-2" />
-              <button onClick={() => navigate("/admin")} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors">
-                <Settings className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Admin Panel</span>
-              </button>
             </div>
           </SheetContent>
         </Sheet>
