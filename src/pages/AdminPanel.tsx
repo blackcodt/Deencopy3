@@ -1,32 +1,63 @@
-import { useState, useEffect } from "react";
-import { getAdminSettings, saveAdminSettings, type AdminSettings } from "@/lib/store";
+import { useState } from "react";
+import { useAppBranding } from "@/hooks/useAppBranding";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Shield } from "lucide-react";
+import { ArrowLeft, Save, Shield, Palette, Image, Megaphone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { TemplateSelector } from "@/components/admin/TemplateSelector";
+import { ImageUploader } from "@/components/admin/ImageUploader";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function AdminPanel() {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [settings, setSettings] = useState<AdminSettings>(getAdminSettings());
+  const [loggingIn, setLoggingIn] = useState(false);
+  const { branding, saveBranding, uploadAsset, loading } = useAppBranding();
+  const [localBranding, setLocalBranding] = useState(branding);
+  const [activeSection, setActiveSection] = useState<"design" | "ads" | "branding">("design");
 
-  const handleLogin = () => {
-    const adminSettings = getAdminSettings();
-    if (password === adminSettings.adminPassword) {
-      setIsAuthenticated(true);
-    } else {
-      toast({ title: "Invalid password", variant: "destructive" });
+  // Sync local branding when cloud branding loads
+  useState(() => {
+    if (!loading) setLocalBranding(branding);
+  });
+
+  const handleLogin = async () => {
+    setLoggingIn(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        toast({ title: "Kuskure", description: error.message, variant: "destructive" });
+      } else {
+        setIsAuthenticated(true);
+        setLocalBranding(branding);
+      }
+    } finally {
+      setLoggingIn(false);
     }
   };
 
-  const handleSave = () => {
-    saveAdminSettings(settings);
-    toast({ title: "Settings saved!", description: "Changes applied successfully." });
+  const handleSave = async () => {
+    const success = await saveBranding(localBranding);
+    if (success) {
+      toast({ title: "An ajiye!", description: "An canza saitunan nasara." });
+    } else {
+      toast({ title: "Kuskure", description: "Ba a iya ajiye saituna.", variant: "destructive" });
+    }
+  };
+
+  const handleLogoUpload = async (file: File) => {
+    const url = await uploadAsset(file, `logo-${Date.now()}.${file.name.split('.').pop()}`);
+    if (url) setLocalBranding(prev => ({ ...prev, logoUrl: url }));
+  };
+
+  const handleLoadingImageUpload = async (file: File) => {
+    const url = await uploadAsset(file, `loading-${Date.now()}.${file.name.split('.').pop()}`);
+    if (url) setLocalBranding(prev => ({ ...prev, loadingImageUrl: url }));
   };
 
   if (!isAuthenticated) {
@@ -36,21 +67,35 @@ export default function AdminPanel() {
           <CardHeader className="text-center">
             <Shield className="h-10 w-10 text-primary mx-auto mb-2" />
             <CardTitle className="font-display">Admin Access</CardTitle>
-            <CardDescription>Enter admin password to continue</CardDescription>
+            <CardDescription>Sign in with your admin account</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-            />
-            <Button onClick={handleLogin} className="w-full gradient-islamic text-primary-foreground">
-              Login
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="admin@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+              />
+            </div>
+            <Button onClick={handleLogin} disabled={loggingIn} className="w-full gradient-islamic text-primary-foreground">
+              {loggingIn ? "Ana shiga..." : "Shiga"}
             </Button>
             <Button variant="ghost" onClick={() => navigate("/")} className="w-full">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Reader
+              <ArrowLeft className="h-4 w-4 mr-2" /> Komawa Littafi
             </Button>
           </CardContent>
         </Card>
@@ -58,151 +103,219 @@ export default function AdminPanel() {
     );
   }
 
+  const sectionTabs = [
+    { id: "design" as const, label: "Tsari", icon: Palette },
+    { id: "branding" as const, label: "Alamar", icon: Image },
+    { id: "ads" as const, label: "Tallace", icon: Megaphone },
+  ];
+
   return (
     <div className="min-h-screen bg-background p-4 max-w-xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-4">
         <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="font-display text-2xl font-bold text-foreground">Admin Panel</h1>
       </div>
 
+      {/* Section Tabs */}
+      <div className="flex gap-1 mb-4 bg-muted/50 p-1 rounded-lg">
+        {sectionTabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveSection(tab.id)}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+              activeSection === tab.id
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <tab.icon className="h-4 w-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       <div className="space-y-4">
-        {/* Ad Provider */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Ad Provider</CardTitle>
-            <CardDescription>Choose between AdMob and AdSense</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              <Label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="adProvider"
-                  checked={settings.adProvider === "adsense"}
-                  onChange={() => setSettings({ ...settings, adProvider: "adsense" })}
-                  className="accent-primary"
+        {activeSection === "design" && (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Zaɓi Tsarin App</CardTitle>
+                <CardDescription>Zaɓi ɗaya daga cikin templates</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <TemplateSelector
+                  selected={localBranding.template}
+                  onSelect={(template) => setLocalBranding(prev => ({ ...prev, template }))}
                 />
-                AdSense
-              </Label>
-              <Label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="adProvider"
-                  checked={settings.adProvider === "admob"}
-                  onChange={() => setSettings({ ...settings, adProvider: "admob" })}
-                  className="accent-primary"
-                />
-                AdMob
-              </Label>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        {/* AdSense Settings */}
-        {settings.adProvider === "adsense" && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">AdSense Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <Label htmlFor="adsensePub">Publisher ID (ca-pub-xxx)</Label>
-                <Input
-                  id="adsensePub"
-                  placeholder="ca-pub-1234567890"
-                  value={settings.adsensePublisherId}
-                  onChange={(e) => setSettings({ ...settings, adsensePublisherId: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="adsenseSlot">Ad Slot ID</Label>
-                <Input
-                  id="adsenseSlot"
-                  placeholder="1234567890"
-                  value={settings.adsenseSlotId}
-                  onChange={(e) => setSettings({ ...settings, adsenseSlotId: e.target.value })}
-                />
-              </div>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Launuka</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <Label>Babban Launi (Primary)</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <input
+                      type="color"
+                      value={localBranding.primaryColor}
+                      onChange={(e) => setLocalBranding(prev => ({ ...prev, primaryColor: e.target.value }))}
+                      className="w-10 h-10 rounded cursor-pointer border-0"
+                    />
+                    <Input
+                      value={localBranding.primaryColor}
+                      onChange={(e) => setLocalBranding(prev => ({ ...prev, primaryColor: e.target.value }))}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Launin Ado (Accent)</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <input
+                      type="color"
+                      value={localBranding.accentColor}
+                      onChange={(e) => setLocalBranding(prev => ({ ...prev, accentColor: e.target.value }))}
+                      className="w-10 h-10 rounded cursor-pointer border-0"
+                    />
+                    <Input
+                      value={localBranding.accentColor}
+                      onChange={(e) => setLocalBranding(prev => ({ ...prev, accentColor: e.target.value }))}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
         )}
 
-        {/* AdMob Settings */}
-        {settings.adProvider === "admob" && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">AdMob Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <Label htmlFor="admobBanner">Banner Ad Unit ID</Label>
+        {activeSection === "branding" && (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Sunan App</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <Input
-                  id="admobBanner"
-                  placeholder="ca-app-pub-xxx/yyy"
-                  value={settings.admobBannerId}
-                  onChange={(e) => setSettings({ ...settings, admobBannerId: e.target.value })}
+                  value={localBranding.appName}
+                  onChange={(e) => setLocalBranding(prev => ({ ...prev, appName: e.target.value }))}
+                  placeholder="Sunan littafin"
                 />
-              </div>
-              <div>
-                <Label htmlFor="admobInterstitial">Interstitial Ad Unit ID</Label>
-                <Input
-                  id="admobInterstitial"
-                  placeholder="ca-app-pub-xxx/yyy"
-                  value={settings.admobInterstitialId}
-                  onChange={(e) => setSettings({ ...settings, admobInterstitialId: e.target.value })}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Hotunan App</CardTitle>
+                <CardDescription>Loda logo da hoton lodi</CardDescription>
+              </CardHeader>
+              <CardContent className="flex gap-6">
+                <ImageUploader
+                  label="App Logo"
+                  currentUrl={localBranding.logoUrl}
+                  onUpload={handleLogoUpload}
                 />
-              </div>
-            </CardContent>
-          </Card>
+                <ImageUploader
+                  label="Hoton Lodi"
+                  currentUrl={localBranding.loadingImageUrl}
+                  onUpload={handleLoadingImageUpload}
+                />
+              </CardContent>
+            </Card>
+          </>
         )}
 
-        {/* Theme */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">App Theme</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-2">
-              {(["emerald", "midnight", "desert"] as const).map((theme) => (
-                <button
-                  key={theme}
-                  onClick={() => setSettings({ ...settings, theme })}
-                  className={`p-3 rounded-lg border text-center capitalize text-sm transition-all
-                    ${settings.theme === theme ? "golden-border bg-primary/5" : "border-border hover:border-primary/30"}
-                  `}
-                >
-                  <div
-                    className={`w-6 h-6 rounded-full mx-auto mb-1 ${
-                      theme === "emerald" ? "bg-primary" : theme === "midnight" ? "bg-foreground" : "bg-accent"
-                    }`}
-                  />
-                  {theme}
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {activeSection === "ads" && (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Mai Talla</CardTitle>
+                <CardDescription>Zaɓi AdMob ko AdSense</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4">
+                  <Label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="adProvider"
+                      checked={localBranding.adProvider === "adsense"}
+                      onChange={() => setLocalBranding(prev => ({ ...prev, adProvider: "adsense" }))}
+                      className="accent-primary"
+                    />
+                    AdSense
+                  </Label>
+                  <Label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="adProvider"
+                      checked={localBranding.adProvider === "admob"}
+                      onChange={() => setLocalBranding(prev => ({ ...prev, adProvider: "admob" }))}
+                      className="accent-primary"
+                    />
+                    AdMob
+                  </Label>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Change Password */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Admin Password</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Input
-              type="password"
-              placeholder="New admin password"
-              value={settings.adminPassword}
-              onChange={(e) => setSettings({ ...settings, adminPassword: e.target.value })}
-            />
-          </CardContent>
-        </Card>
+            {localBranding.adProvider === "adsense" && (
+              <Card>
+                <CardHeader><CardTitle className="text-lg">AdSense</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label>Publisher ID (ca-pub-xxx)</Label>
+                    <Input
+                      placeholder="ca-pub-1234567890"
+                      value={localBranding.adsensePublisherId}
+                      onChange={(e) => setLocalBranding(prev => ({ ...prev, adsensePublisherId: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label>Ad Slot ID</Label>
+                    <Input
+                      placeholder="1234567890"
+                      value={localBranding.adsenseSlotId}
+                      onChange={(e) => setLocalBranding(prev => ({ ...prev, adsenseSlotId: e.target.value }))}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {localBranding.adProvider === "admob" && (
+              <Card>
+                <CardHeader><CardTitle className="text-lg">AdMob</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label>Banner Ad Unit ID</Label>
+                    <Input
+                      placeholder="ca-app-pub-xxx/yyy"
+                      value={localBranding.admobBannerId}
+                      onChange={(e) => setLocalBranding(prev => ({ ...prev, admobBannerId: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label>Interstitial Ad Unit ID</Label>
+                    <Input
+                      placeholder="ca-app-pub-xxx/yyy"
+                      value={localBranding.admobInterstitialId}
+                      onChange={(e) => setLocalBranding(prev => ({ ...prev, admobInterstitialId: e.target.value }))}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
 
         <Button onClick={handleSave} className="w-full gradient-islamic text-primary-foreground gap-2">
           <Save className="h-4 w-4" />
-          Save All Settings
+          Ajiye Duk Saituna
         </Button>
       </div>
     </div>
