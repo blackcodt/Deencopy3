@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 
 const Index = () => {
-  const navigate = useNavigate();
+  
   const [showVerse, setShowVerse] = useState(false);
   const [activeTab, setActiveTab] = useState<"read" | "stats" | "toc" | "search">("read");
   const [isDark, setIsDark] = useState(false);
