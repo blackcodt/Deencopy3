@@ -6,7 +6,7 @@ on:
       build_type:
         description: 'Build type'
         required: true
-        default: 'debug'
+        default: 'release'
         type: choice
         options:
           - debug
@@ -44,9 +44,6 @@ jobs:
       - name: Add Android platform
         run: npx cap add android || true
 
-      - name: Sync Capacitor
-        run: npx cap sync android
-
       - name: Remove server config for production
         run: |
           node -e "
@@ -55,28 +52,73 @@ jobs:
           const cleaned = config.replace(/server:\s*\{[^}]*\},?\s*/s, '');
           fs.writeFileSync('capacitor.config.ts', cleaned);
           "
-          npx cap sync android
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Decode keystore
+        if: ${{ github.event.inputs.build_type == 'release' && env.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/release-keystore.jks
+
+      - name: Configure signing
+        if: ${{ github.event.inputs.build_type == 'release' && env.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          cat >> android/app/build.gradle << 'EOF'
+
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file("release-keystore.jks")
+                      storePassword System.getenv("KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("KEY_ALIAS")
+                      keyPassword System.getenv("KEY_PASSWORD")
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+              }
+          }
+          EOF
 
       - name: Build Debug APK
         if: ${{ github.event.inputs.build_type == 'debug' }}
         working-directory: android
         run: ./gradlew assembleDebug
 
-      - name: Build Release APK
-        if: ${{ github.event.inputs.build_type == 'release' }}
+      - name: Build Release APK (signed)
+        if: ${{ github.event.inputs.build_type == 'release' && env.KEYSTORE_BASE64 != '' }}
         working-directory: android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: ./gradlew assembleRelease
 
-      - name: Upload Debug APK
-        if: ${{ github.event.inputs.build_type == 'debug' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Build Release APK (unsigned)
+        if: ${{ github.event.inputs.build_type == 'release' && env.KEYSTORE_BASE64 == '' }}
+        working-directory: android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: ./gradlew assembleRelease
 
-      - name: Upload Release APK
-        if: ${{ github.event.inputs.build_type == 'release' }}
+      - name: Find APK
+        id: find_apk
+        run: |
+          APK=$(find android/app/build/outputs/apk -name "*.apk" | head -1)
+          echo "apk_path=$APK" >> $GITHUB_OUTPUT
+          echo "apk_name=$(basename $APK)" >> $GITHUB_OUTPUT
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
-          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          name: android-apk
+          path: ${{ steps.find_apk.outputs.apk_path }}
+          retention-days: 30
