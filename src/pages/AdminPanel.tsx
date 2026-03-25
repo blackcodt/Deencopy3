@@ -21,7 +21,7 @@ export default function AdminPanel() {
   const [loggingIn, setLoggingIn] = useState(false);
   const { branding, saveBranding, uploadAsset, loading } = useAppBranding();
   const [localBranding, setLocalBranding] = useState(branding);
-  const [activeSection, setActiveSection] = useState<"design" | "ads" | "branding">("design");
+  const [activeSection, setActiveSection] = useState<"design" | "ads" | "branding" | "pdf" | "apk">("design");
 
   // Sync local branding when cloud branding loads
   useState(() => {
@@ -109,6 +109,8 @@ export default function AdminPanel() {
     { id: "design" as const, label: "Tsari", icon: Palette },
     { id: "branding" as const, label: "Alamar", icon: Image },
     { id: "ads" as const, label: "Tallace", icon: Megaphone },
+    { id: "pdf" as const, label: "PDF", icon: FileText },
+    { id: "apk" as const, label: "APK", icon: Smartphone },
   ];
 
   return (
@@ -314,6 +316,10 @@ export default function AdminPanel() {
             )}
           </>
         )}
+
+        {activeSection === "pdf" && <PdfExtractor />}
+
+        {activeSection === "apk" && <ApkBuilder />}
 
         <Button onClick={handleSave} className="w-full gradient-islamic text-primary-foreground gap-2">
           <Save className="h-4 w-4" />
