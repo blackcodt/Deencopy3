@@ -87,10 +87,9 @@ export function ApkBuilder() {
       if (error) throw error;
 
       if (data.status === "completed") {
-        if (data.conclusion === "success") {
+          if (data.conclusion === "success") {
           setProgress(90);
           addLog("Gini ya gama nasara! Ana neman fayilin APK...");
-          // Fetch download link
           const { data: dlData } = await supabase.functions.invoke(
             `build-apk?action=download&owner=${owner}&repo=${repo}&runId=${runId}`
           );
@@ -106,7 +105,9 @@ export function ApkBuilder() {
           }
         } else {
           setStatus("failed");
-          addLog(`Gini ya faskara: ${data.conclusion}`);
+          const reason = data.failureReason || data.conclusion;
+          addLog(`Gini ya faskara: ${reason}`);
+          addLog("Tabbatar an ƙara VITE_SUPABASE_URL da VITE_SUPABASE_PUBLISHABLE_KEY a GitHub Secrets.");
         }
       } else {
         // Increment progress while building
