@@ -38,6 +38,68 @@ export type Database = {
         }
         Relationships: []
       }
+      book_chapters: {
+        Row: {
+          book_id: string
+          chapter_number: number
+          content: Json
+          created_at: string
+          id: string
+          title: string
+        }
+        Insert: {
+          book_id: string
+          chapter_number: number
+          content?: Json
+          created_at?: string
+          id?: string
+          title: string
+        }
+        Update: {
+          book_id?: string
+          chapter_number?: number
+          content?: Json
+          created_at?: string
+          id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_chapters_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      books: {
+        Row: {
+          author: string
+          created_at: string
+          file_name: string
+          id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
