@@ -12,6 +12,10 @@ on:
           - debug
           - release
 
+env:
+  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -40,18 +44,30 @@ jobs:
 
       - name: Build web app
         run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
+
+      - name: Install Capacitor CLI
+        run: npm install @capacitor/cli @capacitor/core @capacitor/android
+
+      - name: Create production Capacitor config
+        run: |
+          cat > capacitor.config.ts << 'EOF'
+          import type { CapacitorConfig } from '@capacitor/cli';
+
+          const config: CapacitorConfig = {
+            appId: 'app.lovable.musulunci',
+            appName: 'Musulunci',
+            webDir: 'dist',
+          };
+
+          export default config;
+          EOF
 
       - name: Add Android platform
         run: npx cap add android || true
-
-      - name: Remove server config for production
-        run: |
-          node -e "
-          const fs = require('fs');
-          const config = fs.readFileSync('capacitor.config.ts', 'utf8');
-          const cleaned = config.replace(/server:\s*\{[^}]*\},?\s*/s, '');
-          fs.writeFileSync('capacitor.config.ts', cleaned);
-          "
 
       - name: Sync Capacitor
         run: npx cap sync android

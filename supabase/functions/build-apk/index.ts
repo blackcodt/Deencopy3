@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 serve(async (req) => {
@@ -30,7 +30,6 @@ serve(async (req) => {
         });
       }
 
-      // Trigger workflow
       const triggerRes = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/actions/workflows/build-apk.yml/dispatches`,
         {
@@ -52,7 +51,6 @@ serve(async (req) => {
         throw new Error(`GitHub API error [${triggerRes.status}]: ${errText}`);
       }
 
-      // Wait a moment then get the run ID
       await new Promise(r => setTimeout(r, 3000));
 
       const runsRes = await fetch(
@@ -90,10 +88,37 @@ serve(async (req) => {
 
       const statusData = await statusRes.json();
 
+      // If completed with failure, try to get the failed step logs
+      let failureReason = '';
+      if (statusData.status === 'completed' && statusData.conclusion === 'failure') {
+        try {
+          const jobsRes = await fetch(
+            `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/jobs`,
+            {
+              headers: {
+                'Authorization': `Bearer ${GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github.v3+json',
+              },
+            }
+          );
+          const jobsData = await jobsRes.json();
+          const failedJob = jobsData.jobs?.[0];
+          if (failedJob) {
+            const failedStep = failedJob.steps?.find((s: any) => s.conclusion === 'failure');
+            failureReason = failedStep
+              ? `Step "${failedStep.name}" failed`
+              : `Job "${failedJob.name}" failed`;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
       return new Response(JSON.stringify({
         status: statusData.status,
         conclusion: statusData.conclusion,
         html_url: statusData.html_url,
+        failureReason,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -104,7 +129,6 @@ serve(async (req) => {
       const repo = url.searchParams.get('repo');
       const runId = url.searchParams.get('runId');
 
-      // Get artifacts
       const artifactsRes = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/artifacts`,
         {
@@ -124,7 +148,6 @@ serve(async (req) => {
         });
       }
 
-      // Get download URL
       const downloadRes = await fetch(artifact.archive_download_url, {
         headers: {
           'Authorization': `Bearer ${GITHUB_TOKEN}`,
