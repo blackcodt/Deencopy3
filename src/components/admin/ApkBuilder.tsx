@@ -255,27 +255,30 @@ export function ApkBuilder() {
       </Card>
 
       {/* Signing Info */}
-      {buildType === "release" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Saini don Play Store</CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground space-y-2">
-            <p>Don gina signed APK mai shiga Play Store, ƙara waɗannan secrets a GitHub repo → Settings → Secrets:</p>
-            <ul className="list-disc list-inside space-y-1">
-              <li><code className="bg-muted px-1 rounded">KEYSTORE_BASE64</code> — Keystore file (base64 encoded)</li>
-              <li><code className="bg-muted px-1 rounded">KEYSTORE_PASSWORD</code> — Kalmar sirri ta keystore</li>
-              <li><code className="bg-muted px-1 rounded">KEY_ALIAS</code> — Sunan makulli</li>
-              <li><code className="bg-muted px-1 rounded">KEY_PASSWORD</code> — Kalmar sirri ta makulli</li>
-            </ul>
-            <p className="mt-2">Don ƙirƙirar keystore, yi amfani da:</p>
-            <pre className="bg-muted p-2 rounded text-[10px] overflow-x-auto">
-              keytool -genkey -v -keystore release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias myapp
-            </pre>
-            <p>Sannan encode shi: <code className="bg-muted px-1 rounded">base64 release.jks &gt; keystore.txt</code></p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Required GitHub Secrets */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">⚠️ GitHub Secrets da ake buƙata</CardTitle>
+        </CardHeader>
+        <CardContent className="text-xs text-muted-foreground space-y-2">
+          <p>Dole ne ka ƙara waɗannan secrets a GitHub repo → Settings → Secrets → Actions:</p>
+          <ul className="list-disc list-inside space-y-1">
+            <li><code className="bg-muted px-1 rounded">VITE_SUPABASE_URL</code> — URL na backend</li>
+            <li><code className="bg-muted px-1 rounded">VITE_SUPABASE_PUBLISHABLE_KEY</code> — Makullin API</li>
+          </ul>
+          {buildType === "release" && (
+            <>
+              <p className="mt-2 font-medium">Don signed release APK, ƙara kuma:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li><code className="bg-muted px-1 rounded">KEYSTORE_BASE64</code> — Keystore file (base64)</li>
+                <li><code className="bg-muted px-1 rounded">KEYSTORE_PASSWORD</code> — Kalmar sirri</li>
+                <li><code className="bg-muted px-1 rounded">KEY_ALIAS</code> — Sunan makulli</li>
+                <li><code className="bg-muted px-1 rounded">KEY_PASSWORD</code> — Kalmar sirri ta makulli</li>
+              </ul>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
