@@ -6,7 +6,7 @@ on:
       build_type:
         description: 'Build type'
         required: true
-        default: 'release'
+        default: 'debug'
         type: choice
         options:
           - debug
@@ -49,92 +49,61 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
 
-      - name: Install Capacitor CLI
+      - name: Install Capacitor CLI and dependencies
         run: npm install @capacitor/cli @capacitor/core @capacitor/android
 
-      - name: Create production Capacitor config
-        run: |
-          cat > capacitor.config.ts << 'EOF'
-          import type { CapacitorConfig } from '@capacitor/cli';
+      - name: Remove existing android directory
+        run: rm -rf android/
 
-          const config: CapacitorConfig = {
-            appId: 'app.lovable.musulunci',
-            appName: 'Musulunci',
-            webDir: 'dist',
-          };
-
-          export default config;
-          EOF
-
-      - name: Add Android platform
-        run: npx cap add android || true
-
+      - name: Initialize Capacitor Android project
+        run: npx cap add android
+          
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Decode keystore
-        if: ${{ github.event.inputs.build_type == 'release' && env.KEYSTORE_BASE64 != '' }}
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: |
-          echo "$KEYSTORE_BASE64" | base64 -d > android/app/release-keystore.jks
-
-      - name: Configure signing
-        if: ${{ github.event.inputs.build_type == 'release' && env.KEYSTORE_BASE64 != '' }}
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: |
-          cat >> android/app/build.gradle << 'EOF'
-
-          android {
-              signingConfigs {
-                  release {
-                      storeFile file("release-keystore.jks")
-                      storePassword System.getenv("KEYSTORE_PASSWORD")
-                      keyAlias System.getenv("KEY_ALIAS")
-                      keyPassword System.getenv("KEY_PASSWORD")
-                  }
-              }
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.release
-                  }
-              }
-          }
-          EOF
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
 
       - name: Build Debug APK
         if: ${{ github.event.inputs.build_type == 'debug' }}
         working-directory: android
         run: ./gradlew assembleDebug
 
-      - name: Build Release APK (signed)
-        if: ${{ github.event.inputs.build_type == 'release' && env.KEYSTORE_BASE64 != '' }}
+      - name: Build Release APK
+        if: ${{ github.event.inputs.build_type == 'release' }}
         working-directory: android
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: ./gradlew assembleRelease
-
-      - name: Build Release APK (unsigned)
-        if: ${{ github.event.inputs.build_type == 'release' && env.KEYSTORE_BASE64 == '' }}
-        working-directory: android
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: ./gradlew assembleRelease
 
       - name: Find APK
         id: find_apk
         run: |
-          APK=$(find android/app/build/outputs/apk -name "*.apk" | head -1)
+          if [ -d "android/app/build/outputs/apk/debug" ]; then
+            APK=$(find android/app/build/outputs/apk/debug -name "*.apk" | head -1)
+            BUILD_TYPE="debug"
+          else
+            APK=$(find android/app/build/outputs/apk/release -name "*.apk" | head -1)
+            BUILD_TYPE="release"
+          fi
           echo "apk_path=$APK" >> $GITHUB_OUTPUT
           echo "apk_name=$(basename $APK)" >> $GITHUB_OUTPUT
+          echo "build_type=$BUILD_TYPE" >> $GITHUB_OUTPUT
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: android-apk
+          name: deencopy3-apk-${{ steps.find_apk.outputs.build_type }}
           path: ${{ steps.find_apk.outputs.apk_path }}
           retention-days: 30
+
+      - name: Create Release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ steps.find_apk.outputs.apk_path }}
+          tag_name: apk-build-${{ github.run_number }}
+          body: |
+            APK Build #${{ github.run_number }}
+            Build Type: ${{ github.event.inputs.build_type }}
+            APK: ${{ steps.find_apk.outputs.apk_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
